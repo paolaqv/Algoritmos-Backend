@@ -1,42 +1,39 @@
 import heapq
+from collections import defaultdict, deque
 
 def bellman_ford(nodes, edges, source):
-    """
-    Ejecuta Bellman-Ford para calcular distancias minimas desde 'source'.
-    :param nodes: Lista de nodos (por ejemplo, ['A', 'B', 'C', ...]).
-    :param edges: Lista de aristas en formato (u, v, peso).
-    :param source: Nodo fuente.
-    :return: Diccionario de distancias {nodo: distancia, ...} o None si hay ciclo negativo. 
-    """
-    dist = { node: float('inf') for node in nodes }
+    dist = {node: float('inf') for node in nodes}
     dist[source] = 0
-    
-    # Relajación de aristas |nodes| - 1 veces
+
     for _ in range(len(nodes) - 1):
         for u, v, w in edges:
-            if dist[u] + w < dist[v]:
+            if dist[u] != float('inf') and dist[u] + w < dist[v]:
                 dist[v] = dist[u] + w
-                
-    # Verificar ciclo negativo
+
     for u, v, w in edges:
-        if dist[u] + w < dist[v]:
-            return None  # Ciclo negativo detectado
+        if dist[u] != float('inf') and dist[u] + w < dist[v]:
+            return None
     return dist
 
-def dijkstra(nodes, graph, source):
-    """
-    Ejecuta el algoritmo de Dijkstra para encontrar los caminos mas cortos
-    desde 'source' en un grafo con pesos no negativos.
+def calculate_h_values(nodes, edges):
+    q = 'q'
+    extended_nodes = nodes + [q]
+    extended_edges = edges + [(q, node, 0) for node in nodes]
     
-    :param nodes: Lista de nodos.
-    :param graph: Diccionario de adyacencia {u: [(v, peso), ...], ...}.
-    :param source: Nodo fuente.
-    :return: Diccionario con las distancias minimas desde 'source'.
-    """
-    dist = { node: float('inf') for node in nodes }
+    h = bellman_ford(extended_nodes, extended_edges, q)
+    if h is None:
+        raise Exception("El grafo contiene un ciclo de peso negativo. Johnson no se puede aplicar.")
+
+    # Eliminamos el nodo ficticio `q` del resultado
+    del h[q]
+    return h
+
+def dijkstra(nodes, graph, source):
+    dist = {node: float('inf') for node in nodes}
     dist[source] = 0
     heap = [(0, source)]
-    
+    paths = {node: [] for node in nodes}
+
     while heap:
         d, u = heapq.heappop(heap)
         if d > dist[u]:
@@ -45,50 +42,86 @@ def dijkstra(nodes, graph, source):
             if dist[u] + w < dist[v]:
                 dist[v] = dist[u] + w
                 heapq.heappush(heap, (dist[v], v))
-    return dist
+                paths[v] = paths[u] + [u]
+
+    return dist, paths
+
+def calculate_early_times(nodes, graph):
+    early_times = {node: 0 for node in nodes}
+    for u in nodes:
+        for v, w in graph.get(u, []):
+            early_times[v] = max(early_times[v], early_times[u] + w)
+    return early_times
+
+def calculate_late_times(nodes, edges, early_times, final_node):
+    late_times = {node: float('inf') for node in nodes}
+    late_times[final_node] = early_times[final_node]
+
+    reversed_edges = defaultdict(list)
+    for u, v, w in edges:
+        reversed_edges[v].append((u, w))
+    
+    queue = deque([final_node])
+    
+    while queue:
+        current_node = queue.popleft()
+        
+        for prev_node, weight in reversed_edges[current_node]:
+            if late_times[current_node] - weight < late_times[prev_node]:
+                late_times[prev_node] = late_times[current_node] - weight
+                queue.append(prev_node)
+    
+    return late_times
+
+def find_critical_path(early_times, late_times):
+    return [node for node in early_times if early_times[node] == late_times[node]]
 
 def johnson(nodes, edges):
-    """
-    algoritmo de Johnson para obtener los caminos mas cortos entre todos los pares.
-    
-    :param nodes: Lista de identificadores de nodos (ej. ['A', 'B', 'C', ...]).
-    :param edges: Lista de aristas en formato (u, v, peso).
-    :return: Diccionario de distancias, donde distances[u][v] es la distancia minima de u a v.
-    :raises Exception: Si se detecta un ciclo de peso negativo.
-    """
-    # Paso 1: Agregar un nodo ficticio 'q' conectado a todos con peso 0.
-    q = 'q'
-    extended_nodes = nodes.copy()
-    extended_nodes.append(q)
-    extended_edges = edges.copy()
-    for node in nodes:
-        extended_edges.append((q, node, 0))
-    
-    # Ejecutar Bellman-Ford desde 'q' para obtener h(v)
-    h = bellman_ford(extended_nodes, extended_edges,                 q)
-    if h is None:
-        raise Exception("El grafo contiene un ciclo de peso negativo. Johnson no se puede aplicar.")
-    
-    # Reponderar las aristas: w'(u, v) = w(u, v) + h[u] - h[v]
+    # Calcular valores de h usando Bellman-Ford
+    h = calculate_h_values(nodes, edges)
+
+    # Reponderar las aristas usando los valores h
     reweighted_edges = []
     for u, v, w in edges:
         new_weight = w + h[u] - h[v]
         reweighted_edges.append((u, v, new_weight))
-    
-    # Construir grafo reponderado en formato de lista de adyacencia
-    graph = { node: [] for node in nodes }
+
+    graph = defaultdict(list)
     for u, v, w in reweighted_edges:
         graph[u].append((v, w))
-    
-    # Ejecutar Dijkstra desde cada nodo
-    distances = {}
-    for u in nodes:
-        d = dijkstra(nodes, graph, u)
-        distances[u] = {}
-        # Revertir la reponderación: d(u, v) = d'(u, v) + h[v] - h[u]
-        for v in nodes:
-            if d[v] == float('inf'):
-                distances[u][v] = float('inf')
-            else:
-                distances[u][v] = d[v] + h[v] - h[u]
-    return distances
+
+    # Calcular los tiempos tempranos y tardíos
+    early_times = calculate_early_times(nodes, graph)
+    final_node = max(early_times, key=early_times.get)
+    late_times = calculate_late_times(nodes, edges, early_times, final_node)
+    critical_path = find_critical_path(early_times, late_times)
+
+    edges_data = {}
+    for index, (u, v, w) in enumerate(edges, 1):
+        edge_id = f"edge{index}"
+        early_start = early_times[u]
+        early_finish = early_start + w
+        late_start = late_times[v] - w if late_times[v] != float('inf') else None
+        late_finish = late_times[v] if late_times[v] != float('inf') else None
+
+        # Calcular el h correcto para cada arista
+        h_value = late_times[v] - early_times[u] - w
+
+        edges_data[edge_id] = {
+            "source": u,
+            "target": v,
+            "label": f"{w}\n h= {h_value}",
+            "earlyStart": early_start,
+            "earlyFinish": early_finish,
+            "lateStart": late_start,
+            "lateFinish": late_finish
+        }
+
+    return {
+        "distances": graph,
+        "h_values": h,
+        "critical_path": critical_path,
+        "early_times": early_times,
+        "late_times": late_times,
+        "edges": edges_data
+    }

@@ -13,40 +13,39 @@ def adjacency_matrix():
     
     return jsonify({'matrix': matrix})
 
+
+def convert_infinity_to_null(data):
+    if isinstance(data, dict):
+        return {k: convert_infinity_to_null(v) for k, v in data.items()}
+    elif isinstance(data, list):
+        return [convert_infinity_to_null(v) for v in data]
+    elif data == float('inf'):
+        return None
+    return data
+
 @bp.route('/johnson', methods=['POST'])
 def johnson_shortest_paths():
-    """
-    Endpoint para ejecutar el algoritmo de Johnson y obtener los caminos más cortos
-    entre todos los pares de nodos.
-    
-    Se espera recibir un JSON con:
-      - nodes: Lista de nodos, cada uno con al menos el atributo 'name'.
-      - edges: Lista de aristas en el siguiente formato:
-          {
-              "node1": { "name": "A" },
-              "node2": { "name": "B" },
-              "weight": 4,
-              "direction": "directed"  // o "undirected"
-          }
-    """
-    data = request.get_json()
-    nodes = data.get('nodes', [])
-    edges = data.get('edges', [])
-    
-    # Formateamos las aristas: convertimos cada arista a una tupla (u, v, peso)
-    formatted_edges = []
-    for edge in edges:
-        node1 = edge.get('node1')
-        node2 = edge.get('node2')
-        # Convertir el peso a float para admitir negativos y decimales
-        weight = float(edge.get('weight', 1))
-        formatted_edges.append((node1.get('name'), node2.get('name'), weight))
-    
-    # Extraemos la lista de nombres de nodos
-    node_names = [node.get('name') for node in nodes]
-    
     try:
-        distances = johnson(node_names, formatted_edges)
-        return jsonify({'distances': distances})
+        data = request.get_json()
+        nodes = [node['name'] for node in data.get('nodes', [])]
+        edges = []
+
+        for edge in data.get('edges', []):
+            edges.append((
+                edge['node1']['name'],
+                edge['node2']['name'],
+                float(edge['weight'])
+            ))
+
+        result = johnson(nodes, edges)
+
+        if result is None:
+            return jsonify({"error": "El grafo contiene un ciclo de peso negativo."}), 400
+
+        result['distances'] = convert_infinity_to_null(result['distances'])
+        result['early_times'] = convert_infinity_to_null(result['early_times'])
+        result['late_times'] = convert_infinity_to_null(result['late_times'])
+
+        return jsonify(result), 200
     except Exception as e:
-        return jsonify({'error': str(e)}), 400
+        return jsonify({"error": str(e)}), 500

@@ -16,3 +16,10 @@ pip install PyJWT
 flask run
 
 ```
+
+###  pulp
+
+```sh
+pip install pulp
+```
+

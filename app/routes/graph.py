@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from app.services.graph_service import create_adjacency_matrix
 from app.services.johnson_services import johnson 
+from app.services.northwest_services import solve_transportation_problem
 
 bp = Blueprint('graph', __name__, url_prefix='/graph')
 
@@ -47,5 +48,21 @@ def johnson_shortest_paths():
         result['late_times'] = convert_infinity_to_null(result['late_times'])
 
         return jsonify(result), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+@bp.route('/northwest', methods=['POST'])
+def northwest_solver():
+    try:
+        data = request.get_json()
+        maximize = request.args.get('maximize', 'false').lower() == 'true'
+
+        result = solve_transportation_problem(data, maximize)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify(result), 200
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500

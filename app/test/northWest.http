@@ -1,0 +1,21 @@
+
+POST http://localhost:5000/graph/northwest?maximize=false
+Content-Type: application/json
+
+{
+  "Origins": ["A", "B"],
+  "Targets": ["X", "Y", "Z"],
+  "supply": {
+    "A": 20,
+    "B": 30
+  },
+  "demand": {
+    "X": 10,
+    "Y": 25,
+    "Z": 15
+  },
+  "costs": [
+    [8, 6, 10],
+    [9, 12, 13]
+  ]
+}

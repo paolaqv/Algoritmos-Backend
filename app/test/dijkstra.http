@@ -1,0 +1,31 @@
+POST http://127.0.0.1:5000/graph/dijkstra?start=A&end=H&maximize=false
+Content-Type: application/json
+
+{
+  "nodes": [
+    { "id": "A", "name": "A", "x": 0,   "y": 0   },
+    { "id": "B", "name": "B", "x": 100, "y": 0   },
+    { "id": "C", "name": "C", "x": 200, "y": 0   },
+    { "id": "D", "name": "D", "x": 300, "y": 0   },
+    { "id": "E", "name": "E", "x": 300, "y": 100 },
+    { "id": "F", "name": "F", "x": 200, "y": 100 },
+    { "id": "G", "name": "G", "x": 100, "y": 100 },
+    { "id": "H", "name": "H", "x": 0,   "y": 100 }
+  ],
+  "edges": [
+    { "node1": { "id": "A", "name": "A" }, "node2": { "id": "B", "name": "B" }, "weight": 4 },
+    { "node1": { "id": "A", "name": "A" }, "node2": { "id": "C", "name": "C" }, "weight": 3 },
+    { "node1": { "id": "B", "name": "B" }, "node2": { "id": "C", "name": "C" }, "weight": 1 },
+    { "node1": { "id": "B", "name": "B" }, "node2": { "id": "D", "name": "D" }, "weight": 2 },
+    { "node1": { "id": "C", "name": "C" }, "node2": { "id": "D", "name": "D" }, "weight": 4 },
+    { "node1": { "id": "C", "name": "C" }, "node2": { "id": "E", "name": "E" }, "weight": 2 },
+    { "node1": { "id": "D", "name": "D" }, "node2": { "id": "E", "name": "E" }, "weight": 1 },
+    { "node1": { "id": "D", "name": "D" }, "node2": { "id": "F", "name": "F" }, "weight": 5 },
+    { "node1": { "id": "E", "name": "E" }, "node2": { "id": "F", "name": "F" }, "weight": 2 },
+    { "node1": { "id": "E", "name": "E" }, "node2": { "id": "G", "name": "G" }, "weight": 3 },
+    { "node1": { "id": "F", "name": "F" }, "node2": { "id": "G", "name": "G" }, "weight": 2 },
+    { "node1": { "id": "F", "name": "F" }, "node2": { "id": "H", "name": "H" }, "weight": 3 },
+    { "node1": { "id": "G", "name": "G" }, "node2": { "id": "H", "name": "H" }, "weight": 1 },
+    { "node1": { "id": "B", "name": "B" }, "node2": { "id": "H", "name": "H" }, "weight": 7 }
+  ]
+}

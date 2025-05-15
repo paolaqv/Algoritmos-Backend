@@ -3,6 +3,7 @@ from app.services.graph_service import create_adjacency_matrix
 from app.services.johnson_services import johnson 
 from app.services.northwest_services import solve_transportation_problem
 from app.services.kruskal_services import find_spanning_tree, create_paths
+from app.services.dijkstra_services import dijkstra_with_paths
 
 bp = Blueprint('graph', __name__, url_prefix='/graph')
 
@@ -77,3 +78,28 @@ def spanning_tree():
     paths = create_paths(data_mst)
 
     return jsonify({"data_mst": data_mst, "paths": paths}), 200
+
+@bp.route('/dijkstra', methods=['POST'])
+def dijkstra_route():
+    """
+    POST /graph/dijkstra?start=<node>&end=<node>&maximize=<true|false>
+    Body JSON: mismo formato que Kruskal (listas o dicts en 'nodes' y 'edges').
+    Devuelve:
+      {
+        "nodes": { nodeId: {distance, path}, … },
+        "targetPath": {"path1":{"edges":[…]}}  // si end fue provisto
+      }
+    """
+    data = request.get_json()
+    start = request.args.get('start')
+    end   = request.args.get('end', None)
+    maximize = request.args.get('maximize', 'false').lower() == 'true'
+
+    if not start:
+        return jsonify({"error": "Se requiere parámetro 'start'"}), 400
+
+    try:
+        result = dijkstra_with_paths(data, start, end, maximize)
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

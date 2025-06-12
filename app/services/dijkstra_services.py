@@ -1,5 +1,6 @@
 import networkx as nx
 from collections import deque
+import heapq
 from typing import Dict, List, Optional
 from app.services.kruskal_services import create_paths
 
@@ -48,7 +49,6 @@ def vertices_edges_to_adjacency_list(VEGraph: Dict) -> Dict[str, Dict]:
         src = edge['source']
         tgt = edge['target']
         adjacency[src]['neighbors'][tgt] = {"edgeId": eid, "label": label}
-
     return adjacency
 
 def dijkstra(
@@ -56,26 +56,33 @@ def dijkstra(
     start: str,
     maximize: bool = False
 ) -> Dict[str, Dict]:
-    # Init dist & paths
     inf = float('-inf') if maximize else float('inf')
     dist = {n: inf for n in graph}
     dist[start] = 0
     paths = {n: [] for n in graph}
+    visited = set()
 
-    queue = deque([start])
-    while queue:
-        u = queue.popleft()
+    heap = [(-0 if maximize else 0, start)]  # (distance, node)
+
+    while heap:
+        curr_dist, u = heapq.heappop(heap)
+        if u in visited:
+            continue
+        visited.add(u)
+
+        curr_dist = -curr_dist if maximize else curr_dist
+
         for v, meta in graph[u]['neighbors'].items():
-            nd = dist[u] + meta['label']
-            better = (maximize and nd > dist[v]) or (not maximize and nd < dist[v])
-            if better:
+            weight = meta['label']
+            nd = curr_dist + weight
+            if (maximize and nd > dist[v]) or (not maximize and nd < dist[v]):
                 dist[v] = nd
                 paths[v] = paths[u] + [meta['edgeId']]
-                queue.append(v)
+                heapq.heappush(heap, (-nd if maximize else nd, v))
 
-    # Unreachables → -1
+    # Marcar no alcanzables
     for n in graph:
-        if dist[n] == inf:
+        if dist[n] == inf or dist[n] == -inf:
             dist[n] = -1
 
     return {n: {"distance": dist[n], "path": paths[n]} for n in graph}
